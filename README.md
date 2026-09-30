@@ -78,3 +78,4 @@ Expected example:
 If your actual Spring Boot `POST /plans` endpoint uses a different request body or path,
 update `src/services/api.js` and `CreatePlan.jsx`.
 "# track-activity-ui" 
+# added the rule only admin can merge in dev
