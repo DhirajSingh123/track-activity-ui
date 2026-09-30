@@ -1,24 +1,48 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:8081';
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    ...options
-  });
 
-  const contentType = response.headers.get('content-type') || '';
-  const data = contentType.includes('application/json')
-    ? await response.json()
-    : await response.text();
+  const token =
+    localStorage.getItem('trackActivityToken');
+
+  const response = await fetch(
+    `${API_BASE_URL}${path}`,
+    {
+      ...options,
+
+      headers: {
+        'Content-Type': 'application/json',
+
+        ...(token
+          ? {
+              Authorization: `Bearer ${token}`
+            }
+          : {}),
+
+        ...(options.headers || {})
+      }
+    }
+  );
+
+  const contentType =
+    response.headers.get('content-type') || '';
+
+  const data =
+    contentType.includes('application/json')
+      ? await response.json()
+      : await response.text();
 
   if (!response.ok) {
+
     const message =
       typeof data === 'string'
         ? data
-        : data?.message || data?.error || 'Something went wrong';
+        : data?.message ||
+          data?.error ||
+          'Something went wrong';
+
     throw new Error(message);
   }
 
@@ -26,16 +50,30 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+
   registerUser: (payload) =>
     request('/users/register', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
 
-  loginUser: (phoneNo) =>
-    request('/users/login', {
+  // STEP 1
+  sendOtp: (phoneNumber) =>
+    request('/auth/send-otp', {
       method: 'POST',
-      body: JSON.stringify({ phoneNo })
+      body: JSON.stringify({
+        phoneNumber
+      })
+    }),
+
+  // STEP 2
+  verifyOtp: (phoneNumber, otp) =>
+    request('/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({
+        phoneNumber,
+        otp
+      })
     }),
 
   createPlan: (payload) =>
@@ -45,11 +83,16 @@ export const api = {
     }),
 
   addDailyActivity: (planId, payload) =>
-    request(`/plans/${encodeURIComponent(planId)}/activities`, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    }),
+    request(
+      `/plans/${encodeURIComponent(planId)}/activities`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    ),
 
   getPlan: (planId) =>
-    request(`/plans/${encodeURIComponent(planId)}`)
+    request(
+      `/plans/${encodeURIComponent(planId)}`
+    )
 };

@@ -4,33 +4,105 @@ import { api } from '../services/api';
 
 export default function AuthCard({ onLogin }) {
   const [mode, setMode] = useState('login');
+
   const [form, setForm] = useState({
     name: '',
     emailId: '',
-    phoneNo: ''
+    phoneNo: '',
+    otp: ''
   });
+
+  const [otpSent, setOtpSent] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const update = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const changeMode = (newMode) => {
+    setMode(newMode);
+    setOtpSent(false);
+    setMessage('');
+
+    setForm({
+      name: '',
+      emailId: '',
+      phoneNo: '',
+      otp: ''
+    });
   };
 
   const submit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
     setMessage('');
 
     try {
+
+      // REGISTER
       if (mode === 'register') {
-        const user = await api.registerUser(form);
-        localStorage.setItem('trackActivityUser', JSON.stringify(user));
-        onLogin(user);
-      } else {
-        const user = await api.loginUser(form.phoneNo);
-        localStorage.setItem('trackActivityUser', JSON.stringify(user));
-        onLogin(user);
+        await api.registerUser({
+          name: form.name,
+          emailId: form.emailId,
+          phoneNo: form.phoneNo
+        });
+
+        setMessage(
+          'Account created successfully. Please login using your phone number.'
+        );
+
+        setMode('login');
+        setOtpSent(false);
+
+        setForm({
+          name: '',
+          emailId: '',
+          phoneNo: form.phoneNo,
+          otp: ''
+        });
+
+        return;
       }
+
+      // LOGIN - STEP 1: SEND OTP
+      if (!otpSent) {
+
+        await api.sendOtp(form.phoneNo);
+
+        setOtpSent(true);
+
+        setMessage(
+          'OTP sent to your registered email.'
+        );
+
+        return;
+      }
+
+      // LOGIN - STEP 2: VERIFY OTP
+      const authResponse = await api.verifyOtp(
+        form.phoneNo,
+        form.otp
+      );
+
+      /*
+        Backend response:
+
+        {
+          token: "...",
+          user: {...}
+        }
+      */
+
+      onLogin({
+        user: authResponse.user,
+        token: authResponse.token
+      });
+
     } catch (err) {
       setMessage(err.message);
     } finally {
@@ -40,8 +112,10 @@ export default function AuthCard({ onLogin }) {
 
   return (
     <div className="auth-card">
+
       <div className="auth-brand">
         <div className="brand-mark">TA</div>
+
         <div>
           <h1>Track Activity</h1>
           <p>Build consistency. See your progress.</p>
@@ -49,27 +123,37 @@ export default function AuthCard({ onLogin }) {
       </div>
 
       <div className="tabs">
+
         <button
           className={mode === 'login' ? 'tab active' : 'tab'}
-          onClick={() => setMode('login')}
+          onClick={() => changeMode('login')}
           type="button"
         >
-          <LogIn size={18} /> Login
+          <LogIn size={18} />
+          Login
         </button>
+
         <button
           className={mode === 'register' ? 'tab active' : 'tab'}
-          onClick={() => setMode('register')}
+          onClick={() => changeMode('register')}
           type="button"
         >
-          <UserPlus size={18} /> Register
+          <UserPlus size={18} />
+          Register
         </button>
+
       </div>
 
-      <form onSubmit={submit} className="form-grid">
+      <form
+        onSubmit={submit}
+        className="form-grid"
+      >
+
         {mode === 'register' && (
           <>
             <label>
               Name
+
               <input
                 name="name"
                 value={form.name}
@@ -81,6 +165,7 @@ export default function AuthCard({ onLogin }) {
 
             <label>
               Email
+
               <input
                 type="email"
                 name="emailId"
@@ -95,29 +180,65 @@ export default function AuthCard({ onLogin }) {
 
         <label>
           Phone Number
+
           <input
             name="phoneNo"
             value={form.phoneNo}
             onChange={update}
             placeholder="9876543210"
+            disabled={mode === 'login' && otpSent}
             required
           />
         </label>
 
-        {message && <div className="error-box">{message}</div>}
+        {/* OTP FIELD */}
+        {mode === 'login' && otpSent && (
+          <label>
+            OTP
 
-        <button className="primary-btn" disabled={loading}>
+            <input
+              name="otp"
+              value={form.otp}
+              onChange={update}
+              placeholder="Enter 6-digit OTP"
+              inputMode="numeric"
+              maxLength={6}
+              required
+            />
+          </label>
+        )}
+
+        {message && (
+          <div className="error-box">
+            {message}
+          </div>
+        )}
+
+        <button
+          className="primary-btn"
+          disabled={loading}
+        >
+
           {loading
             ? 'Please wait...'
             : mode === 'register'
               ? 'Create Account'
-              : 'Login'}
+              : otpSent
+                ? 'Verify OTP'
+                : 'Send OTP'}
+
         </button>
+
       </form>
 
       <p className="helper-text">
-        Current version logs in with phone number only. OTP can be added later.
+        {mode === 'login'
+          ? otpSent
+            ? 'Enter the OTP sent to your registered email.'
+            : 'Enter your registered phone number to receive an OTP.'
+          : 'Create an account using your name, email and phone number.'}
       </p>
+
     </div>
   );
 }
