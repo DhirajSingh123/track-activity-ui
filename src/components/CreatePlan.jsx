@@ -5,7 +5,7 @@ import { api } from '../services/api';
 const initialState = {
   title: '',
   description: '',
-  category: 'LEARNING',
+  category: 'aman',
   subCategory: 'PYTHON',
   targetMinutesPerDay: 120,
   startDate: '',
