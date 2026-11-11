@@ -5,7 +5,7 @@ import { api } from '../services/api';
 const initialState = {
   title: '',
   description: '',
-  category: 'aman',
+  category: 'LEARNING',
   subCategory: 'PYTHON',
   targetMinutesPerDay: 120,
   startDate: '',
@@ -73,6 +73,7 @@ export default function CreatePlan({ user, onCreated }) {
             <option value="FITNESS">FITNESS</option>
             <option value="HEALTH">HEALTH</option>
             <option value="FINANCE">FINANCE</option>
+             <option value="SPORTS">SPORTS</option>
           </select>
         </label>
 
